@@ -31,9 +31,8 @@
     </LinearLayout>
 
     <FrameLayout
-        android:id="@+id/render_layout"
+        android:id="@+id/render_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:background="@color/control_gray" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>

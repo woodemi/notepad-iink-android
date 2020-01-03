@@ -1,9 +1,13 @@
 package com.myscript.notepad_iink
 
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.myscript.iink.*
@@ -45,8 +49,6 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         closeIInk()
     }
 
-    private var viewScale: Double = 1.0
-
     override fun onClick(v: View) {
         when (v.id) {
             R.id.connect -> NotepadConnector.connect(this, scanResult)
@@ -74,8 +76,8 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
                     this@NotepadDetailActivity.notepadClient = null
                 }
                 is ConnectionState.Connected -> {
-                    this@NotepadDetailActivity.notepadClient?.callback = clientCallback
                     this@NotepadDetailActivity.notepadClient = notepadClient
+                    this@NotepadDetailActivity.notepadClient?.callback = clientCallback
                 }
             }
             runOnUiThread {
@@ -92,31 +94,33 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         override fun handlePointer(list: List<NotePenPointer>) {
+            val viewScale = renderer.viewScale
             for (pointer in list) {
                 val pre = prePointer?.p ?: 0
                 when {
                     pre <= 0 && pointer.p > 0 -> {
                         editor.pointerDown(
-                            (pointer.x * viewScale).toFloat(), (pointer.y * viewScale).toFloat(),
+                            pointer.x * viewScale, pointer.y * viewScale,
                             -1, (pointer.p / MAX_PRESSURE).toFloat(),
                             PointerType.PEN, -1
                         )
                     }
                     pre > 0 && pointer.p > 0 -> {
                         editor.pointerMove(
-                            (pointer.x * viewScale).toFloat(), (pointer.y * viewScale).toFloat(),
+                            pointer.x * viewScale, pointer.y * viewScale,
                             -1, (pointer.p / MAX_PRESSURE).toFloat(),
                             PointerType.PEN, -1
                         )
                     }
                     pre > 0 && pointer.p <= 0 -> {
                         editor.pointerUp(
-                            (pointer.x * viewScale).toFloat(), (pointer.y * viewScale).toFloat(),
+                            pointer.x * viewScale, pointer.y * viewScale,
                             -1, (pointer.p / MAX_PRESSURE).toFloat(),
                             PointerType.PEN, -1
                         )
                     }
                 }
+                prePointer = pointer
             }
         }
     }
@@ -135,11 +139,23 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
             )
         )
 
-        val displayMetrics = resources.displayMetrics
-        renderer.viewScale = min(
-            displayMetrics.widthPixels.toDouble() / width.toDouble(),
-            displayMetrics.heightPixels / height.toDouble()
-        ).toFloat()
+        val renderContainer = findViewById<FrameLayout>(R.id.render_container)
+        renderContainer.post {
+            val renderView = LayoutInflater.from(this)
+                .inflate(R.layout.render_view_layout, renderContainer, false)
+            renderer.viewScale = min(
+                renderContainer.width / width.toDouble(),
+                renderContainer.height / height.toDouble()
+            ).toFloat()
+            val layoutParams = FrameLayout.LayoutParams(
+                (width * renderer.viewScale).toInt(),
+                (height * renderer.viewScale).toInt(),
+                Gravity.CENTER
+            )
+            renderView.setBackgroundColor(Color.parseColor("#FEFEFE"))
+            renderContainer.addView(renderView, layoutParams)
+            renderTarget.delegate = renderView as RenderView
+        }
     }
 
     private fun openIInk() {
@@ -158,8 +174,11 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private val renderTarget = object : IRenderTarget {
+        var delegate: IRenderTarget? = null
+
         override fun invalidate(renderer: Renderer, layers: EnumSet<IRenderTarget.LayerType>) {
             Log.d(TAG, "invalidate(renderer: Renderer, layers: EnumSet<IRenderTarget.LayerType>)")
+            delegate?.invalidate(renderer, layers)
         }
 
         override fun invalidate(
@@ -174,6 +193,7 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
                 TAG,
                 "invalidate(renderer: Renderer, x: Int, y: Int, width: Int, height: Int, layers: EnumSet<IRenderTarget.LayerType>)"
             )
+            delegate?.invalidate(renderer, x, y, width, height, layers)
         }
     }
 }
