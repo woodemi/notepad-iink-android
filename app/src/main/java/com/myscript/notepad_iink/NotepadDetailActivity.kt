@@ -6,7 +6,18 @@ import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.myscript.iink.*
+import com.myscript.iink.uireferenceimplementation.FontMetricsProvider
 import io.woodemi.notepad.*
+import java.io.File
+import java.util.*
+import kotlin.math.min
+
+const val widthDpi = 2610F
+const val width = 14800
+const val heightDpi = 2540F
+const val height = 21000
+const val MAX_PRESSURE = 512
 
 const val EXTRA_SCAN_RESULT = "SCAN_RESULT"
 
@@ -25,7 +36,16 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         scanResult = intent.getParcelableExtra(EXTRA_SCAN_RESULT)
 
         NotepadConnector.callback = connectorCallback
+
+        openIInk()
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        closeIInk()
+    }
+
+    private var viewScale: Double = 1.0
 
     override fun onClick(v: View) {
         when (v.id) {
@@ -50,15 +70,110 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         ) {
             when (state) {
                 is ConnectionState.Disconnected -> {
+                    this@NotepadDetailActivity.notepadClient?.callback = null
                     this@NotepadDetailActivity.notepadClient = null
                 }
                 is ConnectionState.Connected -> {
+                    this@NotepadDetailActivity.notepadClient?.callback = clientCallback
                     this@NotepadDetailActivity.notepadClient = notepadClient
                 }
             }
             runOnUiThread {
                 Toast.makeText(this@NotepadDetailActivity, "$state", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private val clientCallback = object : NotepadClient.Callback {
+        var prePointer: NotePenPointer? = null
+
+        override fun handleEvent(message: NotepadMessage) {
+            Log.d(TAG, "handleEvent $message")
+        }
+
+        override fun handlePointer(list: List<NotePenPointer>) {
+            for (pointer in list) {
+                val pre = prePointer?.p ?: 0
+                when {
+                    pre <= 0 && pointer.p > 0 -> {
+                        editor.pointerDown(
+                            (pointer.x * viewScale).toFloat(), (pointer.y * viewScale).toFloat(),
+                            -1, (pointer.p / MAX_PRESSURE).toFloat(),
+                            PointerType.PEN, -1
+                        )
+                    }
+                    pre > 0 && pointer.p > 0 -> {
+                        editor.pointerMove(
+                            (pointer.x * viewScale).toFloat(), (pointer.y * viewScale).toFloat(),
+                            -1, (pointer.p / MAX_PRESSURE).toFloat(),
+                            PointerType.PEN, -1
+                        )
+                    }
+                    pre > 0 && pointer.p <= 0 -> {
+                        editor.pointerUp(
+                            (pointer.x * viewScale).toFloat(), (pointer.y * viewScale).toFloat(),
+                            -1, (pointer.p / MAX_PRESSURE).toFloat(),
+                            PointerType.PEN, -1
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private lateinit var renderer: Renderer
+    private lateinit var editor: Editor
+    private lateinit var contentPackage: ContentPackage
+
+    private fun initRenderEditor() {
+        renderer = App.engine.createRenderer(widthDpi, heightDpi, renderTarget)
+        editor = App.engine.createEditor(renderer)
+        editor.setFontMetricsProvider(
+            FontMetricsProvider(
+                resources.displayMetrics,
+                App.typefaceMap
+            )
+        )
+
+        val displayMetrics = resources.displayMetrics
+        renderer.viewScale = min(
+            displayMetrics.widthPixels.toDouble() / width.toDouble(),
+            displayMetrics.heightPixels / height.toDouble()
+        ).toFloat()
+    }
+
+    private fun openIInk() {
+        initRenderEditor()
+
+        contentPackage =
+            App.engine.openPackage(File(cacheDir, "${Date()}.iink"), PackageOpenOption.CREATE)
+        editor.part = contentPackage.createPart("Text")
+    }
+
+    private fun closeIInk() {
+        contentPackage.save()
+        contentPackage.close()
+        editor.close()
+        renderer.close()
+    }
+
+    private val renderTarget = object : IRenderTarget {
+        override fun invalidate(renderer: Renderer, layers: EnumSet<IRenderTarget.LayerType>) {
+            Log.d(TAG, "invalidate(renderer: Renderer, layers: EnumSet<IRenderTarget.LayerType>)")
+        }
+
+        override fun invalidate(
+            renderer: Renderer,
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+            layers: EnumSet<IRenderTarget.LayerType>
+        ) {
+            Log.d(
+                TAG,
+                "invalidate(renderer: Renderer, x: Int, y: Int, width: Int, height: Int, layers: EnumSet<IRenderTarget.LayerType>)"
+            )
         }
     }
 }

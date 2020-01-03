@@ -29,4 +29,11 @@
             android:layout_weight="1"
             android:text="Disconnect" />
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/render_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="@color/control_gray" />
 </LinearLayout>
