@@ -1,0 +1,20 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion project.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion project.ext.minSdkVersion
+        targetSdkVersion project.ext.targetSdkVersion
+        versionCode 11
+        versionName '1.2.2'
+    }
+
+    publishNonDefault true
+}
+
+dependencies {
+    compile 'androidx.appcompat:appcompat:1.0.0'
+    compile 'com.google.code.gson:gson:2.8.2'
+    compile 'com.myscript:iink:1.2.2'
+}
