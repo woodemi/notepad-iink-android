@@ -1,6 +1,7 @@
 package com.myscript.notepad_iink
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -83,6 +84,11 @@ class MainActivity : AppCompatActivity() {
                 val item = getItem(position)
                 holder.title.text = "${item.name}(${item.rssi})"
                 holder.subtitle.text = "${item.deviceId}"
+                holder.itemView.setOnClickListener {
+                    val intent = Intent(it.context, NotepadDetailActivity::class.java)
+                        .putExtra(EXTRA_SCAN_RESULT, item)
+                    startActivity(intent)
+                }
             }
 
         }
