@@ -59,13 +59,11 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Location permission granted", Toast.LENGTH_SHORT).show()
     }
 
-    private val scanResults = mutableListOf<NotepadScanResult>()
-
     private val scanCallback = object : NotepadScanner.Callback {
         override fun onScanResult(result: NotepadScanResult) {
-            if (!scanResults.any { it.deviceId == result.deviceId }) {
-                scanResults.add(result)
-                scanResultAdapter.submitList(scanResults)
+            val currentList = scanResultAdapter.currentList
+            if (!currentList.any { it.deviceId == result.deviceId }) {
+                scanResultAdapter.submitList(currentList + result)
             }
         }
     }
