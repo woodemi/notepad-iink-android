@@ -36,6 +36,7 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         findViewById<Button>(R.id.connect).setOnClickListener(this)
         findViewById<Button>(R.id.set_mode).setOnClickListener(this)
         findViewById<Button>(R.id.disconnect).setOnClickListener(this)
+        findViewById<Button>(R.id.export_text).setOnClickListener(this)
 
         scanResult = intent.getParcelableExtra(EXTRA_SCAN_RESULT)
 
@@ -60,6 +61,10 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
                 )
             }
             R.id.disconnect -> NotepadConnector.disconnect()
+            R.id.export_text -> {
+                val exportedText = editor.export_(null, MimeType.TEXT)
+                Toast.makeText(this, "Text: $exportedText", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

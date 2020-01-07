@@ -47,4 +47,5 @@ fun Engine.initPath(context: Context) {
     conf.setStringArray("configuration-manager.search-path", arrayOf(confDir))
     val tempDir = context.filesDir.path + File.separator + "tmp"
     conf.setString("content-package.temp-folder", tempDir)
+    conf.setBoolean("text.guides.enable", false)
 }

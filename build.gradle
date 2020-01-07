@@ -33,6 +33,10 @@ allprojects {
 
         // AndroidX libraries
         appcompat = '1.1.0'
+
+        // MyScript IInk
+        iink = '1.2.2'
+        iinkAsset = '1.2.0'
     }
 }
 
