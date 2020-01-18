@@ -37,6 +37,7 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         findViewById<Button>(R.id.set_mode).setOnClickListener(this)
         findViewById<Button>(R.id.disconnect).setOnClickListener(this)
         findViewById<Button>(R.id.export_text).setOnClickListener(this)
+        findViewById<Button>(R.id.import_memo).setOnClickListener(this)
 
         scanResult = intent.getParcelableExtra(EXTRA_SCAN_RESULT)
 
@@ -54,18 +55,60 @@ class NotepadDetailActivity : AppCompatActivity(), View.OnClickListener {
         when (v.id) {
             R.id.connect -> NotepadConnector.connect(this, scanResult)
             R.id.set_mode -> {
-                notepadClient?.setMode(
-                    NotepadMode.Sync,
-                    { Log.d(TAG, "setMode complete") },
-                    { Log.d(TAG, "setMode error $it") }
-                )
+//                notepadClient?.setMode(
+//                    NotepadMode.Sync,
+//                    { Log.d(TAG, "setMode complete") },
+//                    { Log.d(TAG, "setMode error $it") }
+//                )
+                println("editor.isIdle ${editor.isIdle}")
             }
             R.id.disconnect -> NotepadConnector.disconnect()
             R.id.export_text -> {
                 val exportedText = editor.export_(null, MimeType.TEXT)
                 Toast.makeText(this, "Text: $exportedText", Toast.LENGTH_SHORT).show()
             }
+            R.id.import_memo -> {
+                println("parse start")
+                val content = assets.open("pointers.log").bufferedReader().use { it.readText() }
+                val pointerEventsOrigin = parsePointerEvent(content)
+                val upEvents =
+                    pointerEventsOrigin.mapIndexed { index, pointerEvent -> index to pointerEvent }
+                        .filter { it.second.eventType == PointerEventType.UP }
+                val index = upEvents[upEvents.size / 2 / 2].first
+                println("filter index $index")
+                val pointerEvents = pointerEventsOrigin.take(index)
+                println("pointerEvents start")
+                editor.pointerEvents(pointerEvents.toTypedArray(), false)
+                println("pointerEvents end")
+                if (!editor.isIdle) {
+                    Thread {
+                        println("waitForIdle start")
+                        editor.waitForIdle()
+                        println("waitForIdle end")
+                    }.start()
+                }
+            }
         }
+    }
+
+    private fun parsePointerEvent(content: String): List<PointerEvent> {
+        var pre: Float? = null
+        val pointerEvents = content.split("|").fold(mutableListOf<PointerEvent>()) { acc, str ->
+            val split = str.split(",")
+            var (x, y) = split[0].toDouble().toFloat() to split[1].toDouble().toFloat()
+            var (t, f) = split[2].toLong() to split[3].toDouble().toFloat()
+            val p = pre ?: 0f
+            pre = f
+            val eventType = when {
+                p <= 0 && f > 0 -> PointerEventType.DOWN
+                p > 0 && f > 0 -> PointerEventType.MOVE
+                p > 0 && f <= 0 -> PointerEventType.UP
+                else -> return@fold acc
+            }
+            acc.add(PointerEvent(eventType, x, y, t, f, PointerType.PEN, -1))
+            acc
+        }
+        return pointerEvents
     }
 
     private var notepadClient: NotepadClient? = null
